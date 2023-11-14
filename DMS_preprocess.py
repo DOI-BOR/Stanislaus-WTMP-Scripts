@@ -23,6 +23,9 @@ from java.util import TimeZone
 
 import DSS_Tools
 reload(DSS_Tools)
+import Simple_DSS_Functions as sdf
+reload(sdf)
+
 
 units_need_fixing = ['tenths','m/s','deg',] #'radians',]
 
@@ -34,8 +37,9 @@ def fix_DMS_types_units(dss_file):
         tsm = dss.read(r)
         rlow = r.lower()
         if "/flow" in rlow or "/1day/" in rlow:
-            tsm.setType('PER-AVER')
-            dss.write(tsm)
+            if not "/elev" in rlow:
+                tsm.setType('PER-AVER')
+                dss.write(tsm)
         
         if tsm.getUnits() in units_need_fixing:
             if tsm.getUnits() == 'tenths':
@@ -85,12 +89,43 @@ def DMS_fix_units_types(hydro_dss,met_dss_file):
     fix_DMS_types_units(met_dss_file)
 
 def compute_new_melones_flows(currentAlternative, rtw, hydro_dss, output_dss_file):
-    # Add Mormon Ravine and Newcastle PP flows
-    inflow_records = ['/MR Am.-Folsom Lake/11425416 Newcastle PP-Daily Flow/Flow//1Day/250.114.125.1.1/',
-                      '/MR Am.-Folsom Lake/11433930 Mormon Ravine-Daily Flow/Flow//1Day/250.115.125.1.1/']
+    # Sum Stanislaus tribs to get total New Melones inflow
+    inflow_records = ['/MR Stan.-New Melones/11293200 MF Stan. R BL Sanbar-Flow/Flow//1Day/240.62.125.1.1/',
+                      '/MR Stan.-New Melones/11295250 Colliverville PP NR Murphys-Flow/Flow//1Day/240.6.125.1.1/',
+                      '/MR Stan.-New Melones/11295300 NF Stan. R BL Beaver Creek-Flow/Flow//1Day/240.65.125.1.1/',
+                      '/MR Stan.-New Melones/11295505 Stan. PP NR Hathaway Pines-Flow/Flow//1Day/240.67.125.1.1/']
     DSS_Tools.add_flows(currentAlternative, rtw, inflow_records, hydro_dss,
-              '/MR Am.-Folsom Lake/MormonR_NewcastlePP_Sum/Flow//1Day/ResSim_PreProcess/', output_dss_file)
+              '/MR Stan.-New Melones/Combined Inflow/Flow//1Day/ResSim_PreProcess/', output_dss_file)
 
+	# add min 4 cfs to generation flow from New Melones (to prevent zero flow)
+    DSS_Tools.min_ts(hydro_dss,'/MR Stan.-New Melones/NML-Generation Release/Flow//1Hour/240.1.125.1.1/', 4.0, output_dss_file, 'ResSim_PreProcess')
+
+	# Sum Tulloch outflows for Goodwin balance	
+    sdf.resample_dss_ts(hydro_dss,'/MR Stan.-Tulloch/TUL-Generation Release/Flow//1Day/241.1.125.2.1/',rtw,output_dss_file,'1HOUR')
+    sdf.resample_dss_ts(hydro_dss,'/MR Stan.-Tulloch/TUL-Ctrl Regulating Flow/Flow//1Day/241.1.125.4.1/',rtw,output_dss_file,'1HOUR')
+    sdf.resample_dss_ts(hydro_dss,'/MR Stan.-Tulloch/TUL-Spillway Release/Flow//1Day/241.1.125.3.1/',rtw,output_dss_file,'1HOUR')
+    outflow_records = ['/MR Stan.-Tulloch/TUL-Generation Release/Flow//1HOUR/241.1.125.2.1/',
+                       '/MR Stan.-Tulloch/TUL-Ctrl Regulating Flow/Flow//1HOUR/241.1.125.4.1/',
+                       '/MR Stan.-Tulloch/TUL-Spillway Release/Flow//1HOUR/241.1.125.3.1/']
+    DSS_Tools.add_flows(currentAlternative, rtw, outflow_records, output_dss_file,
+              '/MR Stan.-Tulloch/Combined Outflow/Flow//1Hour/ResSim_PreProcess/', output_dss_file)
+
+    # Goodwin Dam balance Flow
+    sdf.resample_dss_ts(hydro_dss,'/MR Stan.-Goodwin/GDW-Release to River/Flow//1Day/242.1.125.3.1/',rtw,output_dss_file,'1HOUR')
+    sdf.resample_dss_ts(hydro_dss,'/MR Stan.-Goodwin/GDW-Joint Canal Diversion/Flow//1Day/242.1.125.6.1/',rtw,output_dss_file,'1HOUR')
+    sdf.resample_dss_ts(hydro_dss,'/MR Stan.-Goodwin/GDW-South Canal Diversion/Flow//1Day/242.1.125.5.1/',rtw,output_dss_file,'1HOUR')
+    sdf.resample_dss_ts(hydro_dss,'/MR Stan.-Goodwin/GDW-Spillway Flow/Flow//1Day/242.1.125.2.1/',rtw,output_dss_file,'1HOUR')
+    sdf.resample_dss_ts(hydro_dss,'/MR Stan.-Goodwin/GDW-Outlet Flow/Flow//1Day/242.1.125.1.1/',rtw,output_dss_file,'1HOUR')
+    flow_records = ['/MR Stan.-Goodwin/GDW-Release to River/Flow//1HOUR/242.1.125.3.1/',
+	                '/MR Stan.-Goodwin/GDW-Joint Canal Diversion/Flow//1HOUR/242.1.125.6.1/',
+	                '/MR Stan.-Goodwin/GDW-South Canal Diversion/Flow//1HOUR/242.1.125.5.1/',
+                    '/MR Stan.-Tulloch/Combined Outflow/Flow//1Hour/ResSim_PreProcess/',]  
+    out_rec = '/MR Stan.-Goodwin/Goodwin Dam Balance Flow/Flow//1HOUR/ResSim_PreProcess/'
+    DSS_Tools.add_or_subtract_flows(currentAlternative, rtw, flow_records, output_dss_file, 
+                                    [None,True,True,False], out_rec, output_dss_file)
+
+	# Ripon Balance - shift goodwin release 1 day back before balance to account for some travel time
+	#ripon_tsm = ripon_tsm_shift.shiftInTime(int timeShiftMinutes)
 
 def compute_plotting_records(currentAlternative, rtw, hydro_dss, output_dss_file):
     pass
@@ -148,8 +183,6 @@ def preprocess_ResSim_Stanislaus(currentAlternative, computeOptions):
     DSS_Tools.create_constant_dss_rec(currentAlternative, rtw, output_dss_file, constant=1, what='gate', 
                         dss_type='INST-VAL', period='1HOUR',cpart='ONES',fpart='ONES')
 
-
-                        
     # if template IDs exist still, remove them
     #DSS_Tools.strip_templateID_and_rename_records(hydro_dss,currentAlternative)
     #DSS_Tools.strip_templateID_and_rename_records(met_dss_file,currentAlternative)
