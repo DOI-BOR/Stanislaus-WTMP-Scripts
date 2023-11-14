@@ -19,7 +19,7 @@ def computeAlternative(currentAlternative, computeOptions):
     dss_file = computeOptions.getDssFilename()
     rtw = computeOptions.getRunTimeWindow()
 
-    # Folsom Inputs **********************************************************************
+    # New Melones Inputs **********************************************************************
     # ******* Use same time resolution as ResSim hydro model time step ************
     # Flows are assumed to be period averaged
     # Evap assumed to be period accumulated length (e.g., ft)
@@ -32,104 +32,80 @@ def computeAlternative(currentAlternative, computeOptions):
     balance_period_str = currentAlternative.getTimeStep()
     shared_dir = os.path.join(project_dir, 'shared')
 
-    DMS_hydro_dss_file = os.path.join(shared_dir, "DMS_AmericanHydroTS.dss")
-    output_dss_file = os.path.join(shared_dir,'DMS_American_ResSim_Pre-Process.dss')
-    fallback_dss_file = os.path.join(shared_dir,'WTMP_American_Historical.dss')
+    DMS_hydro_dss_file = os.path.join(shared_dir, "DMS_StanislausHydroTS.dss")
+    output_dss_file = os.path.join(shared_dir,'DMS_Stanislaus_ResSim_Pre-Process.dss')
+    fallback_dss_file = os.path.join(shared_dir,'WTMP_Stanislaus_Historical.dss')
 
-    sdf.resample_dss_ts(DMS_hydro_dss_file,'/MR Am.-Folsom Lake/NF American River-Flow/Flow//1Day/250.400.125.1.1/',rtw,output_dss_file,'1HOUR')
-    sdf.resample_dss_ts(DMS_hydro_dss_file,'/MR Am.-Folsom Lake/SF American River-Flow/Flow//1Day/250.402.125.1.1/',rtw,output_dss_file,'1HOUR')
-    sdf.resample_dss_ts(output_dss_file,'/MR Am.-Folsom Lake/MormonR_NewcastlePP_Sum/Flow//1Day/ResSim_PreProcess/',rtw,output_dss_file,'1HOUR')
+    sdf.resample_dss_ts(output_dss_file,'/MR Stan.-New Melones/Combined Inflow/Flow//1Day/ResSim_PreProcess/',rtw,output_dss_file,'1HOUR')
 
-    inflow_records = ['::'.join([output_dss_file,'/MR Am.-Folsom Lake/NF American River-Flow/Flow//1Hour/250.400.125.1.1/']),
-                      '::'.join([output_dss_file,'/MR Am.-Folsom Lake/SF American River-Flow/Flow//1Hour/250.402.125.1.1/']),
-                      '::'.join([output_dss_file,'/MR Am.-Folsom Lake/MormonR_NewcastlePP_Sum/Flow//1Hour/ResSim_PreProcess/']),]
+    inflow_records = ['::'.join([output_dss_file,'/MR Stan.-New Melones/Combined Inflow/Flow//1Hour/ResSim_PreProcess/']),]
 
-    outflow_records = ['/MR Am.-Folsom Lake/FOL-Generation Release U1/Flow//1Hour/250.3.125.4.1/',
-                       '/MR Am.-Folsom Lake/FOL-Generation Release U2/Flow//1Hour/250.3.125.5.1/',
-                       '/MR Am.-Folsom Lake/FOL-Generation Release U3/Flow//1Hour/250.3.125.6.1/',
-                       '/MR Am.-Folsom Lake/FOL-Pumping Plant Release/Flow//1Hour/250.3.125.3.1/',
-                       '/MR Am.-Folsom Lake/FOL-Spill Release/Flow//1Hour/250.3.125.7.1/',
-                       '::'.join([output_dss_file,'/MR Am.-Folsom Lake/Upper_River_Outlets_Sum_min4/Flow//1Hour/ResSim_PreProcess/']),
-                       '::'.join([output_dss_file,'/MR Am.-Folsom Lake/Upper_River_Outlets_Sum_min4/Flow//1Hour/ResSim_PreProcess/']),
-                       '::'.join([os.path.join(shared_dir,'Folsom_balance_6.dss'),'//EID/FLOW/*/1HOUR/USGS-CARDNO-MERGED/']),]
+    outflow_records = ['/MR Stan.-New Melones/NML-Generation Release/Flow//1Hour/ResSim_PreProcess/',  # not in pre-process file ...
+                       '/MR Stan.-New Melones/NML-Outlet Release/Flow//1Hour/240.1.125.3.1/']
 
-    stage_record = '/MR Am.-Folsom Lake/FOL-Elevation/Elev//1Hour/250.3.145.1.1/'
+    stage_record = '/MR Stan.-New Melones/NML-Elevation/Elev//1Hour/240.1.145.1.1/'
     evap_record = '::'.join([output_dss_file,'//ZEROS/FLOW//1HOUR/ZEROS/'])
 
-    elev_stor_area = cbfj.read_elev_storage_area_file(os.path.join(shared_dir, 'AMR_scratch_Folsom.csv'), 'Folsom') #TODO: check this
+    elev_stor_area = cbfj.read_elev_storage_area_file(os.path.join(shared_dir, 'AMR_scratch_new_melones.csv'), 'New Melones') #TODO: check this
 
-    use_conic = True
+    use_conic = False
     write_evap = False
     write_storage = False
 
-    evap_dss_record_name = "/FOLSOM LAKE/EVAP FLOW/FLOW//1HOUR/DERIVED/"
-    storage_dss_record_name = "/FOLSOM LAKE/STORAGE/FLOW//1HOUR/DERIVED/"
-    output_dss_record_name = "/FOLSOM LAKE/BALANCE FLOW/FLOW//1HOUR/DERIVED/"
+    evap_dss_record_name = "/NEW MELONES/EVAP FLOW/FLOW//1HOUR/DERIVED/"
+    storage_dss_record_name = "/NEW MELONES/STORAGE/FLOW//1HOUR/DERIVED/"
+    output_dss_record_name = "/NEW MELONES/BALANCE FLOW/FLOW//1HOUR/DERIVED/"
     if use_conic:
-        output_dss_record_name = "/FOLSOM LAKE/BALANCE FLOW/FLOW//1HOUR/DERIVED-CONIC INTERP/"
+        output_dss_record_name = "/NEW MELONES/BALANCE FLOW/FLOW//1HOUR/DERIVED-CONIC INTERP/"
         if 'ZEROS' in evap_record:
-            output_dss_record_name = "/FOLSOM LAKE/BALANCE FLOW/FLOW//1HOUR/DERIVED-CONIC INTERP NO EVAP/"
+            output_dss_record_name = "/NEW MELONES/BALANCE FLOW/FLOW//1HOUR/DERIVED-CONIC INTERP NO EVAP/"
 
-    cbfj.create_balance_flows(currentAlternative, rtw, 'Folsom', inflow_records, outflow_records, stage_record, evap_record,
+    cbfj.create_balance_flows(currentAlternative, rtw, 'New Melones', inflow_records, outflow_records, stage_record, evap_record,
                                 elev_stor_area, DMS_hydro_dss_file, output_dss_record_name, output_dss_file, shared_dir,
                                 evap_dss_record_name=evap_dss_record_name, storage_dss_record_name=storage_dss_record_name,
                                 balance_period_str=balance_period_str, use_conic=use_conic, write_evap=write_evap, write_storage=write_storage,
                                 alt_period=1440, alt_period_string='1Day')
+                                #alt_period=1440*7, alt_period_string='1Week'), was 1week in calibration; hard to make it work in scripting
 
 
-    # Natoma Inputs **********************************************************************
+    # Tulloch Inputs **********************************************************************
     # ******* Use same time resolution as ResSim hydro model time step ************
     # Flows are assumed to be period averaged
     # Evap assumed to be period accumulated length (e.g., ft)
     # Stage assumed to be instantaneous values
 
-    inflow_records = ['/MR Am.-Folsom Lake/FOL-Generation Release U1/Flow//1Hour/250.3.125.4.1/',
-                       '/MR Am.-Folsom Lake/FOL-Generation Release U2/Flow//1Hour/250.3.125.5.1/',
-                       '/MR Am.-Folsom Lake/FOL-Generation Release U3/Flow//1Hour/250.3.125.6.1/',
-                       '/MR Am.-Folsom Lake/FOL-Spill Release/Flow//1Hour/250.3.125.7.1/',
-                       '::'.join([output_dss_file,'/MR Am.-Folsom Lake/Upper_River_Outlets_Sum_min4/Flow//1Hour/ResSim_PreProcess/']),
-                       '::'.join([output_dss_file,'/MR Am.-Folsom Lake/Upper_River_Outlets_Sum_min4/Flow//1Hour/ResSim_PreProcess/']),]
+    inflow_records = ['/MR Stan.-New Melones/NML-Generation Release/Flow//1Hour/ResSim_PreProcess/',  # not in pre-process file ...
+                       '/MR Stan.-New Melones/NML-Outlet Release/Flow//1Hour/240.1.125.3.1/']
 
-    outflow_records = ['/MR Am.-Natoma Lake/NAT-Fish Hatchery Flow/Flow//1Hour/251.4.125.26.1/',
-                       '::'.join([output_dss_file,'/MR Am.-Natoma Lake/NAT-Gen Release Sum/Flow//1Hour/ResSim_PreProcess/']),
-                       '/MR Am.-Natoma Lake/NAT-South Canal Diversion Flw/Flow//1Hour/251.4.125.1.1/',
-                       '/MR Am.-Natoma Lake/NAT-Spill Release/Flow//1Hour/251.4.125.6.1/']
+    outflow_records = ['::'.join([output_dss_file,'/MR Stan.-Tulloch/TUL-Generation Release/Flow//1HOUR/241.1.125.2.1/']),
+                       '::'.join([output_dss_file,'/MR Stan.-Tulloch/TUL-Ctrl Regulating Flow/Flow//1HOUR/241.1.125.4.1/']),
+                       '::'.join([output_dss_file,'/MR Stan.-Tulloch/TUL-Spillway Release/Flow//1HOUR/241.1.125.3.1/'])]
 
-    stage_record = '/MR Am.-Natoma Lake/NAT-Elevation/Elev//1Hour/251.4.145.1.1/'
+    sdf.resample_dss_ts(DMS_hydro_dss_file,'/MR Stan.-Tulloch/TUL-Reservoir Elevation/Elev//1Day/241.1.145.1.1/',rtw,
+                        output_dss_file,'1HOUR',prepend_first_value=True,inst_val=True)
+    stage_record = '::'.join([output_dss_file,'/MR Stan.-Tulloch/TUL-Reservoir Elevation/Elev//1Hour/241.1.145.1.1/'])
     evap_record = '::'.join([output_dss_file,'//ZEROS/FLOW//1HOUR/ZEROS/'])
 
-    elev_stor_area = cbfj.read_elev_storage_area_file(os.path.join(shared_dir, 'AMR_scratch_Natoma.csv'), 'Natoma') #TODO: check this
+    elev_stor_area = cbfj.read_elev_storage_area_file(os.path.join(shared_dir, 'AMR_scratch_tulloch.csv'), 'Tulloch') #TODO: check this
 
-    use_conic = True
+    use_conic = False
     write_evap = False
     write_storage = False
 
-    evap_dss_record_name = "/LAKE NATOMA/EVAP FLOW/FLOW//1HOUR/DERIVED/"
-    storage_dss_record_name = "/LAKE NATOMA/STORAGE/FLOW//1HOUR/DERIVED/"
-    output_dss_record_name = "/LAKE NATOMA/BALANCE FLOW/FLOW//1HOUR/DERIVED/"
+    evap_dss_record_name = "/TULLOCH/EVAP FLOW/FLOW//1HOUR/DERIVED/"
+    storage_dss_record_name = "/TULLOCH/STORAGE/FLOW//1HOUR/DERIVED/"
+    output_dss_record_name = "/TULLOCH/BALANCE FLOW/FLOW//1HOUR/DERIVED/"
     if use_conic:
-        output_dss_record_name = "/LAKE NATOMA/BALANCE FLOW/FLOW//1HOUR/DERIVED-CONIC INTERP/"
+        output_dss_record_name = "/TULLOCH/BALANCE FLOW/FLOW//1HOUR/DERIVED-CONIC INTERP/"
         if 'ZEROS' in evap_record:
-            output_dss_record_name = "/LAKE NATOMA/BALANCE FLOW/FLOW//1HOUR/DERIVED-CONIC INTERP NO EVAP/"
+            output_dss_record_name = "/TULLOCH/BALANCE FLOW/FLOW//1HOUR/DERIVED-CONIC INTERP NO EVAP/"
 
-    cbfj.create_balance_flows(currentAlternative, rtw, 'Natoma', inflow_records, outflow_records, stage_record, evap_record,
+    cbfj.create_balance_flows(currentAlternative, rtw, 'Tulloch', inflow_records, outflow_records, stage_record, evap_record,
                                 elev_stor_area, DMS_hydro_dss_file, output_dss_record_name, output_dss_file, shared_dir,
                                 evap_dss_record_name=evap_dss_record_name, storage_dss_record_name=storage_dss_record_name,
                                 balance_period_str=balance_period_str, use_conic=use_conic, write_evap=write_evap, write_storage=write_storage,
-                                alt_period=60*3, alt_period_string='3Hour')
+                                alt_period=1440, alt_period_string='1Day')
+                                #alt_period=1440*7, alt_period_string='1Week'), was 1week in calibration; hard to make it work in scripting
 
-
-    #######################################################################################
-    # TODO: Calculate River balances
-    #######################################################################################
-    # Trinity River: Limekiln Gulch
-
-    # Trinity River: Douglas City
-
-    # Trinity River: Junction City
-
-    # Clear Creek at South Fork junction (IGO)
-
-    # Sacramento River at Bend Bridge
 
     return True

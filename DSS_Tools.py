@@ -152,18 +152,38 @@ def add_DSS_Data(currentAlt, dssFile, timewindow, input_data, output_path):
     currentAlt.addComputeMessage("Number of Written values: {0}".format(len(output_data)))
     return 0
 
-def resample_dss_ts(inputDSSFile, inputRec, timewindow, outputDSSFile, newPeriod):
+def resample_dss_ts(inputDSSFile, inputRec, timewindow, outputDSSFile, newPeriod, prepend_first_value=False):
     '''Can upsample an even period DSS timeseries, e.g. go from 1DAY -> 1HOUR'''
     dssFm = HecDss.open(inputDSSFile)
     starttime_str = timewindow.getStartTimeString()
     endtime_str = timewindow.getEndTimeString()
     tsm = dssFm.read(inputRec, starttime_str, endtime_str, False)
     tsm_new = tsm.transformTimeSeries(newPeriod,"","AVE")
-    dssFm.close()
+    if not prepend_first_value:
+        # simple tsm transform
+        dssFm.close()
+        dssFmout = HecDss.open(outputDSSFile)
+        dssFmout.write(tsm_new)
+        dssFmout.close()
+    else:
+       # sometimes when upsampling, like from 1Day -> 1Hour, the tsm transform lops off the first hour value that 
+       # simulations need. Here we append the previous value as the first value of the new record.  This comes in handy
+       # to make sure the compute record os complete.
+       tsc_orig = tsm.getData()
+       dssFm.close()
+       tsc_new = tsm_new.getData()
+       steptime = tsc_new.times[1]-tsc_new.times[0]
+       
+       tsc = TimeSeriesContainer()
+       tsc.startTime = tsc_new.times[0] - steptime
+       tsc.interval = tsc_new.interval
+       tsc.fullName = tsc_new.fullName
+       tsc.values = [tsc_orig.values[0],] + tsc_new.values
+       tsc.units = tsc_new.units
+       tsc.type = 'PER-AVER'
+       tsc.numberValues = len(tsc.values)
+       dssFm_out.write(tsc)
 
-    dssFmout = HecDss.open(outputDSSFile)
-    dssFmout.write(tsm_new)
-    dssFmout.close()
 
 
 def airtemp_lapse(dss_file,dss_rec,lapse_in_C,dss_outfile,f_part):
