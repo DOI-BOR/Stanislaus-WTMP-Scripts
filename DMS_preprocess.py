@@ -26,7 +26,6 @@ reload(DSS_Tools)
 import Simple_DSS_Functions as sdf
 reload(sdf)
 
-
 units_need_fixing = ['tenths','m/s','deg',] #'radians',]
 
 def fix_DMS_types_units(dss_file):
@@ -100,6 +99,8 @@ def compute_new_melones_flows(currentAlternative, rtw, hydro_dss, output_dss_fil
 	# add min 4 cfs to generation flow from New Melones (to prevent zero flow)
     DSS_Tools.min_ts(hydro_dss,'/MR Stan.-New Melones/NML-Generation Release/Flow//1Hour/240.1.125.1.1/', 4.0, output_dss_file, 'ResSim_PreProcess')
 
+def compute_tulloch_stan_flows(currentAlternative, rtw, hydro_dss, output_dss_file):
+
 	# Sum Tulloch outflows for Goodwin balance	
     sdf.resample_dss_ts(hydro_dss,'/MR Stan.-Tulloch/TUL-Generation Release/Flow//1Day/241.1.125.2.1/',rtw,output_dss_file,'1HOUR')
     sdf.resample_dss_ts(hydro_dss,'/MR Stan.-Tulloch/TUL-Ctrl Regulating Flow/Flow//1Day/241.1.125.4.1/',rtw,output_dss_file,'1HOUR')
@@ -129,9 +130,10 @@ def compute_new_melones_flows(currentAlternative, rtw, hydro_dss, output_dss_fil
 
 def compute_plotting_records(currentAlternative, rtw, hydro_dss, output_dss_file):
     pass
+    
 
-
-def preprocess_W2_American(currentAlternative, computeOptions):
+def preprocess_W2_Stanislaus(currentAlternative, computeOptions):
+    dss_file = computeOptions.getDssFilename()
     rtw = computeOptions.getRunTimeWindow()
     
     run_dir = computeOptions.getRunDirectory()
@@ -141,15 +143,22 @@ def preprocess_W2_American(currentAlternative, computeOptions):
     balance_period = currentAlternative.getTimeStep()
     shared_dir = os.path.join(project_dir, 'shared')
 
-    output_dss_file = os.path.join(shared_dir,'DMS_Stanislaus_ResSim_Pre-Process.dss') 
+    output_dss_file = os.path.join(shared_dir,'DMS_Stanislaus_ResSim_Pre-Process.dss')
 
     hydro_dss = os.path.join(shared_dir, 'DMS_StanislausHydroTS.dss')
     fix_DMS_types_units(hydro_dss)
     met_dss_file = os.path.join(shared_dir,'DMS_StanislausMet.dss')
     fix_DMS_types_units(met_dss_file)
 
-    splice_lewiston_met_data(currentAlternative, rtw, met_dss_file, output_dss_file, months=[1,2,3,12])
-    compute_5Res_outflows(currentAlternative, rtw, hydro_dss, output_dss_file)
+    DSS_Tools.create_constant_dss_rec(currentAlternative, rtw, output_dss_file, constant=0.001, what='flow', 
+                        dss_type='PER-AVER', period='1DAY',cpart='TinyFlow',fpart='TinyFlow')
+    DSS_Tools.create_constant_dss_rec(currentAlternative, rtw, output_dss_file, constant=0.001, what='flow', 
+                        dss_type='PER-AVER', period='1HOUR',cpart='TinyFlow',fpart='TinyFlow')
+
+    compute_new_melones_flows(currentAlternative, rtw, hydro_dss, output_dss_file)
+    compute_plotting_records(currentAlternative, rtw, hydro_dss, output_dss_file)
+
+    return True
 
 
 def preprocess_ResSim_Stanislaus(currentAlternative, computeOptions):
@@ -183,11 +192,8 @@ def preprocess_ResSim_Stanislaus(currentAlternative, computeOptions):
     DSS_Tools.create_constant_dss_rec(currentAlternative, rtw, output_dss_file, constant=1, what='gate', 
                         dss_type='INST-VAL', period='1HOUR',cpart='ONES',fpart='ONES')
 
-    # if template IDs exist still, remove them
-    #DSS_Tools.strip_templateID_and_rename_records(hydro_dss,currentAlternative)
-    #DSS_Tools.strip_templateID_and_rename_records(met_dss_file,currentAlternative)
-
     compute_new_melones_flows(currentAlternative, rtw, hydro_dss, output_dss_file)
+    compute_tulloch_stan_flows(currentAlternative, rtw, hydro_dss, output_dss_file)
     compute_plotting_records(currentAlternative, rtw, hydro_dss, output_dss_file)
 
     return True
