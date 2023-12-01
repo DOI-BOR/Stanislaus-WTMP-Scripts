@@ -228,6 +228,7 @@ def create_balance_flows(currentAlt, timewindow, res_name, inflow_records, outfl
 
         if units.lower() == 'cms':
             currentAlt.addComputeMessage('Converting cms to cfs')
+            print('Converting inflow to cms to cfs')
             convvals = []
             for flow in values:
                 convvals.append(flow * 35.314666213)
@@ -269,6 +270,7 @@ def create_balance_flows(currentAlt, timewindow, res_name, inflow_records, outfl
 
         if units.lower() == 'cms':
             currentAlt.addComputeMessage('Converting cms to cfs')
+            print('Converting outflow cms to cfs')
             convvals = []
             for flow in values:
                 convvals.append(flow * 35.314666213)
@@ -304,6 +306,14 @@ def create_balance_flows(currentAlt, timewindow, res_name, inflow_records, outfl
             stage = stage[:(len(hectimes) - st_offset)]
             hectimes = hectimes[:(len(hectimes) - st_offset)]
         print('Number Stage Values: {0}'.format(len(stage)))
+
+        if tsc.units.lower() == 'm':
+            currentAlt.addComputeMessage('Converting stage m to ft')
+            print('Converting stage cms to cfs')
+            convvals = []
+            for elev in stage:
+                convvals.append(elev * 3.280839895)
+            stage = convvals
         
     except HecMathException:
         currentAlt.addComputeMessage('ERROR reading' + str(stage_record))
@@ -349,6 +359,8 @@ def create_balance_flows(currentAlt, timewindow, res_name, inflow_records, outfl
     for k in range(n):
         stage_start = stage[k]
         stage_end = stage[k+1]
+
+        #print('Stage:',stage[k])
 
         if use_conic:
             idx1 = get_elev_layer_idx(elev_stor_area['elev'], stage_start, elev_stor_area)
