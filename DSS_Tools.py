@@ -203,11 +203,19 @@ def airtemp_lapse(dss_file,dss_rec,lapse_in_C,dss_outfile,f_part):
     dss_out.write(tsc)
     dss_out.close()
 
-def min_ts(dss_file,dss_rec,min_value,dss_outfile,f_part):
+def min_ts_flow_cfs(dss_file,dss_rec,min_value_cfs,dss_outfile,f_part):
     dss = HecDss.open(dss_file)
     tsm = dss.read(dss_rec)
     tsc = tsm.getData()
     dss.close()
+
+    if tsc.units.lower() == 'cms':
+        min_value = min_value_cfs*0.028316847      
+    elif tsc.units.lower() == 'cfs':
+        min_value = min_value_cfs
+    else:
+        print('min_ts_flow_cfs: flow units not understood (%s).'%tsc.units)
+        sys.exit(-1)        
 
     for vi, v in enumerate(tsc.values):
         tsc.values[vi] = max(v, min_value)
@@ -290,7 +298,7 @@ def add_flows(currentAlt, timewindow, inflow_records, dss_file, output_dss_recor
     tsc.fullName = output_dss_record_name
     tsc.values = inflows
     #tsc.startTime = times[1]
-    tsc.units = 'CFS'
+    tsc.units = 'cfs'
     tsc.type = tstype
     #tsc.endTime = times[-1]
     tsc.numberValues = len(inflows)
@@ -382,7 +390,7 @@ def add_or_subtract_flows(currentAlt, timewindow, inflow_records, dss_file, oper
     tsc.fullName = output_dss_record_name
     tsc.values = inflows
     #tsc.startTime = times[1]
-    tsc.units = 'CFS'
+    tsc.units = 'cfs'
     tsc.type = tstype
     #tsc.endTime = times[-1]
     tsc.numberValues = len(inflows)

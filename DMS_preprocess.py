@@ -26,7 +26,7 @@ reload(DSS_Tools)
 import Simple_DSS_Functions as sdf
 reload(sdf)
 
-units_need_fixing = ['tenths','m/s','deg',] #'radians',]
+units_need_fixing = ['tenths','m/s','deg','kph'] #'radians',]
 
 def fix_DMS_types_units(dss_file):
     '''This method was implemented to change data types to PER-AVER that are not coming from the DMS that way'''
@@ -71,6 +71,23 @@ def fix_DMS_types_units(dss_file):
                 for i in range(len(tsc.values)) :
                     tsc.values[i] = tsc.values[i] / 360.0 * (2*3.141592653589793)                
                 dss.write(tsc)
+            if tsm.getUnits() == 'kph':
+                # convert to m/s 
+                tsc = tsm.getData()
+                tsc.units = 'm/s'
+                for i in range(len(tsc.values)) :
+                    tsc.values[i] = tsc.values[i] / 3.6
+                dss.write(tsc)
+
+                # also, add w2link
+                rec_parts = tsc.fullName.split('/')
+                if not "w2link" in rec_parts[3].lower():
+                    rec_parts[3] += '-W2link'
+                    tsc.fullName = '/'.join(rec_parts)
+                    for i in range(len(tsc.values)) :
+                        tsc.values[i] = tsc.values[i] / 3.6
+                    dss.write(tsc)
+                    
             if tsm.getUnits() == 'm/s':
                 # make a copy divied by kph conversion as a hack to get W2 linking the wind speed correctly 
                 tsc = tsm.getData()
@@ -81,6 +98,7 @@ def fix_DMS_types_units(dss_file):
                     for i in range(len(tsc.values)) :
                         tsc.values[i] = tsc.values[i] / 3.6
                     dss.write(tsc)
+                    
     dss.close()
 
 def DMS_fix_units_types(hydro_dss,met_dss_file):
@@ -97,19 +115,37 @@ def compute_new_melones_flows(currentAlternative, rtw, hydro_dss, output_dss_fil
               '/MR Stan.-New Melones/Combined Inflow/Flow//1Day/ResSim_PreProcess/', output_dss_file)
 
 	# add min 4 cfs to generation flow from New Melones (to prevent zero flow)
-    DSS_Tools.min_ts(hydro_dss,'/MR Stan.-New Melones/NML-Generation Release/Flow//1Hour/240.1.125.1.1/', 4.0, output_dss_file, 'ResSim_PreProcess')
+    DSS_Tools.min_ts_flow_cfs(hydro_dss,'/MR Stan.-New Melones/NML-Generation Release/Flow//1Hour/240.1.125.1.1/', 4.0, output_dss_file, 'ResSim_PreProcess')
 
-def compute_tulloch_stan_flows(currentAlternative, rtw, hydro_dss, output_dss_file):
+def compute_tulloch_flows(currentAlternative, rtw, hydro_dss, output_dss_file):
 
-	# Sum Tulloch outflows for Goodwin balance	
-    sdf.resample_dss_ts(hydro_dss,'/MR Stan.-Tulloch/TUL-Generation Release/Flow//1Day/241.1.125.2.1/',rtw,output_dss_file,'1HOUR')
+	# Sum stanisalus outflows for independent W2 Tulloch simulatinos
+    outflow_records = ['/MR Stan.-New Melones/NML-Generation Release/Flow//1Hour/ResSim_PreProcess/',  # not in pre-process file ...
+                       '/MR Stan.-New Melones/NML-Outlet Release/Flow//1Hour/240.1.125.3.1/']
+    DSS_Tools.add_flows(currentAlternative, rtw, outflow_records, hydro_dss,
+              '/MR Stan.-New Melones/Combined Outflow/Flow//1Hour/W2_PreProcess/', output_dss_file)	
+	
+    # add min 4 cfs to generation flow from New Melones (to prevent zero flow)
+    DSS_Tools.min_ts_flow_cfs(hydro_dss,'/MR Stan.-Tulloch/TUL-Generation Release/Flow//1Day/241.1.125.2.1/', 4.0, output_dss_file, 'ResSim_PreProcess')
+
+    sdf.resample_dss_ts(hydro_dss,'/MR Stan.-Tulloch/TUL-Generation Release/Flow//1Day/ResSim_PreProcess/',rtw,output_dss_file,'1HOUR')
     sdf.resample_dss_ts(hydro_dss,'/MR Stan.-Tulloch/TUL-Ctrl Regulating Flow/Flow//1Day/241.1.125.4.1/',rtw,output_dss_file,'1HOUR')
     sdf.resample_dss_ts(hydro_dss,'/MR Stan.-Tulloch/TUL-Spillway Release/Flow//1Day/241.1.125.3.1/',rtw,output_dss_file,'1HOUR')
-    outflow_records = ['/MR Stan.-Tulloch/TUL-Generation Release/Flow//1HOUR/241.1.125.2.1/',
+
+	# combine Tulloch cnt-reg and gen flows, for W2
+    outflow_records = ['/MR Stan.-Tulloch/TUL-Generation Release/Flow//1HOUR/ResSim_PreProcess/',
+                       '/MR Stan.-Tulloch/TUL-Ctrl Regulating Flow/Flow//1HOUR/241.1.125.4.1/']
+    DSS_Tools.add_flows(currentAlternative, rtw, outflow_records, output_dss_file,
+              '/MR Stan.-Tulloch/TUL-Ctrl-Reg-plus-Gen/Flow//1Hour/W2_PreProcess/', output_dss_file)	
+
+    # Sum Tulloch outflows for Goodwin balance	    
+    outflow_records = ['/MR Stan.-Tulloch/TUL-Generation Release/Flow//1HOUR/ResSim_PreProcess/',
                        '/MR Stan.-Tulloch/TUL-Ctrl Regulating Flow/Flow//1HOUR/241.1.125.4.1/',
                        '/MR Stan.-Tulloch/TUL-Spillway Release/Flow//1HOUR/241.1.125.3.1/']
     DSS_Tools.add_flows(currentAlternative, rtw, outflow_records, output_dss_file,
               '/MR Stan.-Tulloch/Combined Outflow/Flow//1Hour/ResSim_PreProcess/', output_dss_file)
+
+def compute_stanislaus_flows(currentAlternative, rtw, hydro_dss, output_dss_file):
 
     # Goodwin Dam balance Flow
     sdf.resample_dss_ts(hydro_dss,'/MR Stan.-Goodwin/GDW-Release to River/Flow//1Day/242.1.125.3.1/',rtw,output_dss_file,'1HOUR')
@@ -154,8 +190,15 @@ def preprocess_W2_Stanislaus(currentAlternative, computeOptions):
                         dss_type='PER-AVER', period='1DAY',cpart='TinyFlow',fpart='TinyFlow')
     DSS_Tools.create_constant_dss_rec(currentAlternative, rtw, output_dss_file, constant=0.001, what='flow', 
                         dss_type='PER-AVER', period='1HOUR',cpart='TinyFlow',fpart='TinyFlow')
-
+    DSS_Tools.create_constant_dss_rec(currentAlternative, rtw, output_dss_file, constant=10.0, what='temp-water', 
+                        dss_type='PER-AVER', period='1DAY',cpart='TENS',fpart='TENS')
+    DSS_Tools.create_constant_dss_rec(currentAlternative, rtw, output_dss_file, constant=0.0, what='flow', 
+                        dss_type='PER-AVER', period='1DAY',cpart='ZEROS',fpart='ZEROS')
+    DSS_Tools.create_constant_dss_rec(currentAlternative, rtw, output_dss_file, constant=0.0, what='flow', 
+                        dss_type='PER-AVER', period='1HOUR',cpart='ZEROS',fpart='ZEROS')
+                        
     compute_new_melones_flows(currentAlternative, rtw, hydro_dss, output_dss_file)
+    compute_tulloch_flows(currentAlternative, rtw, hydro_dss, output_dss_file)
     compute_plotting_records(currentAlternative, rtw, hydro_dss, output_dss_file)
 
     return True
@@ -193,7 +236,8 @@ def preprocess_ResSim_Stanislaus(currentAlternative, computeOptions):
                         dss_type='INST-VAL', period='1HOUR',cpart='ONES',fpart='ONES')
 
     compute_new_melones_flows(currentAlternative, rtw, hydro_dss, output_dss_file)
-    compute_tulloch_stan_flows(currentAlternative, rtw, hydro_dss, output_dss_file)
+    compute_tulloch_flows(currentAlternative, rtw, hydro_dss, output_dss_file)
+    compute_stanislaus_flows(currentAlternative, rtw, hydro_dss, output_dss_file)    
     compute_plotting_records(currentAlternative, rtw, hydro_dss, output_dss_file)
 
     return True

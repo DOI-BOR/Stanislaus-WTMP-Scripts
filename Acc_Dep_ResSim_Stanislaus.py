@@ -1,6 +1,6 @@
 '''
 Created on 8/7/2023
-@author: Scott Burdick-Yahya
+@author: Scott Burdick-Yahya, and Ben Saenz
 @organization: Resource Management Associates
 @contact: scott@rmanet.com
 @note:
@@ -77,7 +77,7 @@ def computeAlternative(currentAlternative, computeOptions):
     inflow_records = ['/MR Stan.-New Melones/NML-Generation Release/Flow//1Hour/ResSim_PreProcess/',  # not in pre-process file ...
                        '/MR Stan.-New Melones/NML-Outlet Release/Flow//1Hour/240.1.125.3.1/']
 
-    outflow_records = ['::'.join([output_dss_file,'/MR Stan.-Tulloch/TUL-Generation Release/Flow//1HOUR/241.1.125.2.1/']),
+    outflow_records = ['::'.join([output_dss_file,'/MR Stan.-Tulloch/TUL-Generation Release/Flow//1HOUR/ResSim_PreProcess/']),
                        '::'.join([output_dss_file,'/MR Stan.-Tulloch/TUL-Ctrl Regulating Flow/Flow//1HOUR/241.1.125.4.1/']),
                        '::'.join([output_dss_file,'/MR Stan.-Tulloch/TUL-Spillway Release/Flow//1HOUR/241.1.125.3.1/'])]
 
