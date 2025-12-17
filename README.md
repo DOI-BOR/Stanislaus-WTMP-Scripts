@@ -5,21 +5,24 @@ These scripts are called at different points in the WTMP workflow.
 These scripts are all in Jython, the implementation of Python in Java.
 
 ## W2 files
-* Pre-Process_W2_Stanislaus.py
 ### Forecast
 ### Hindcast
 ### Planning
 ### Shared or not specified
+* Pre-Process_W2_Stanislaus.py
+  * The pre-processing script for W2
+
 
 ## ResSim files
-* Pre-Process_ResSim_StanPO.py
-* Pre-Process_ResSim_StanPO_.py
 ### Forecast
 ### Hindcast
 * Acc_Dep_ResSim_Stanislaus.py
 ### Planning
 ### Shared or not specified
-
+* Pre-Process_ResSim_StanPO.py
+  * The pre-processing script for ResSim
+* Pre-Process_ResSim_StanPO_.py
+  * The pre-processing script for ResSim
 
 ## Shared files between W2 and ResSim
 These files contain various function that are shared by different models.
